@@ -1,144 +1,164 @@
-/* App.css - VisionGuide Styles */
-
 * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    background-color: #111;
-    color: #fff;
+    margin: 0;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(circle at top, #0f172a 0%, #020617 45%, #020617 100%);
+    color: #e2e8f0;
 }
 
-/* High contrast mode for visually impaired */
-.high-contrast {
-    --bg-color: #000000;
-    --text-color: #ffff00;
-    --border-color: #ffffff;
+.app-shell {
+    min-height: 100vh;
+    padding: 1.25rem;
 }
 
-.high-contrast body {
-    background-color: #000;
-    color: #ff0;
-}
-
-.high-contrast button {
-    background-color: #000;
-    color: #ff0;
-    border: 2px solid #ff0;
-}
-
-/* Animations */
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-.animate-pulse {
-    animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Camera overlay styles */
-.camera-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-}
-
-.detection-box {
-    position: absolute;
-    border: 3px solid;
-    border-radius: 4px;
-    animation: fadeIn 0.2s ease;
-}
-
-.detection-label {
-    position: absolute;
-    top: -25px;
-    left: 0;
-    padding: 2px 8px;
-    font-size: 12px;
-    font-weight: bold;
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-/* Navigation status */
-.status-card {
-    transition: all 0.3s ease;
-}
-
-.status-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* Voice indicator */
-.voice-indicator {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background-color: #3b82f6;
+.hero-header {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: linear-gradient(130deg, rgba(30, 64, 175, 0.45), rgba(76, 29, 149, 0.35));
+    border-radius: 20px;
+    padding: 1.25rem;
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
+    justify-content: space-between;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.35);
 }
 
-.voice-indicator.listening {
-    background-color: #10b981;
-    animation: pulse 1s infinite;
+.hero-kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.72rem;
+    margin: 0;
+    color: #c7d2fe;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .container {
-        padding-left: 12px;
-        padding-right: 12px;
-    }
-    
-    button {
-        padding: 8px 16px;
-        font-size: 14px;
-    }
-    
-    .detection-label {
-        font-size: 10px;
-        top: -20px;
-    }
+.hero-title {
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    margin: 0.25rem 0;
 }
 
-/* Accessibility focus styles */
-button:focus, 
-a:focus {
-    outline: 3px solid #ff0;
-    outline-offset: 2px;
+.hero-subtitle {
+    margin: 0;
+    color: #cbd5e1;
 }
 
-/* Screen reader only */
-.sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
+.voice-toggle {
     border: 0;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.8);
+    color: #e2e8f0;
+    padding: 0.8rem 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.voice-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.voice-toggle.is-listening {
+    background: linear-gradient(120deg, #10b981, #0ea5e9);
+    animation: pulse 1.3s infinite;
+}
+
+.app-content {
+    margin-top: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.camera-card {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.38);
+    min-height: 56vh;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.status-card,
+.transcript-card,
+.commands-card {
+    border-radius: 16px;
+    padding: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.7);
+    box-shadow: 0 12px 30px rgba(2, 6, 23, 0.28);
+}
+
+.status-card h3,
+.commands-card h4 {
+    margin-top: 0;
+}
+
+.muted {
+    color: #94a3b8;
+}
+
+.highlight {
+    font-size: 1.02rem;
+    color: #e2e8f0;
+}
+
+.chip {
+    display: inline-block;
+    margin-top: 0.45rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.2);
+    color: #bfdbfe;
+    font-size: 0.82rem;
+}
+
+.alert-text {
+    margin-top: 0.7rem;
+    color: #facc15;
+}
+
+.danger-btn {
+    margin-top: 0.65rem;
+    border: 0;
+    border-radius: 10px;
+    background: #dc2626;
+    color: white;
+    padding: 0.58rem 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    color: #bfdbfe;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+@media (max-width: 900px) {
+    .hero-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+
+    .cards-grid,
+    .commands-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .camera-card {
+        min-height: 48vh;
+    }
 }
