@@ -3,6 +3,8 @@
  * Detects obstacles in real-time from camera feed
  */
 
+import * as cocoSsd from '@tensorflow-models/coco-ssd';
+
 class ObjectDetectionService {
     constructor() {
         this.model = null;
@@ -136,8 +138,6 @@ class ObjectDetectionService {
             
             // Only alert if confidence is high enough
             if (confidence > 60 && (isPriority || distance === 'very close')) {
-                const alertKey = ${detection.class}_;
-                
                 // Cooldown check
                 if (now - this.lastAlertTime > this.alertCooldown) {
                     this.speakAlert(detection.class, direction, distance, confidence);
@@ -161,18 +161,18 @@ class ObjectDetectionService {
         let message = '';
         
         if (distance === 'very close') {
-            message = Warning!   very close!;
+            message = `Warning! ${className} very close!`;
         } else if (distance === 'close') {
-            message = Caution:  on your ;
+            message = `Caution: ${className} on your ${direction}`;
         } else if (className === 'car' || className === 'person') {
-            message = ${className} detected ;
+            message = `${className} detected ${direction}`;
         } else {
-            message = Obstacle:  ;
+            message = `Obstacle: ${className} ${direction}`;
         }
         
         // Add distance information
         if (distance !== 'unknown' && distance !== 'far') {
-            message += , ;
+            message += `, ${distance}`;
         }
         
         // Speak with urgency

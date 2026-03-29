@@ -303,7 +303,7 @@ class EnhancedNavigationService {
         
         // Add distance information
         if (step.distance) {
-            message += , in ;
+            message += `, in ${step.distance}`;
         }
         
         // Add caution if crossing roads
@@ -556,7 +556,7 @@ class EnhancedNavigationService {
                     }));
                     resolve(places);
                 } else {
-                    reject(Place search failed: );
+                    reject(`Place search failed: ${status}`);
                 }
             });
         });

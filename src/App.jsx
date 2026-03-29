@@ -43,6 +43,11 @@ const starterPlaces = [
     { key: 'mall', label: 'Mall', destination: 'Nearest mall', accent: 'sunset' }
 ];
 
+const defaultQuickActions = [
+    { label: 'Share live location', kind: 'location' },
+    { label: 'Looking for nearby help', kind: 'help' }
+];
+
 function App() {
     const [destination, setDestination] = useState('');
     const [isNavigating, setIsNavigating] = useState(false);
@@ -60,6 +65,7 @@ function App() {
     const [emergencyContacts] = useState(defaultContacts);
     const [safetyOptions, setSafetyOptions] = useState({ avoidBusyRoutes: true, avoidMountainous: true, avoidTolls: true });
     const [liveLocation, setLiveLocation] = useState(null);
+    const [locationName, setLocationName] = useState('');
     const [locationUpdatedAt, setLocationUpdatedAt] = useState('');
     const [commandOutput, setCommandOutput] = useState('Your voice results will appear here. Ask for live location, traffic, nearby help, or navigation.');
     const [personality, setPersonality] = useState('calm');
@@ -68,7 +74,7 @@ function App() {
         title: 'Ready to help',
         body: 'Use your voice or tap a shortcut to get started.',
         tone: 'info',
-        actions: []
+        actions: defaultQuickActions
     });
 
     const navigationService = useRef(new NavigationService());
@@ -148,10 +154,7 @@ function App() {
             title: personalityModes[mode].label,
             body: personalityModes[mode].intro,
             tone: 'celebrate',
-            actions: [
-                { label: 'Live location', kind: 'location' },
-                { label: 'Find nearby help', kind: 'help' }
-            ]
+            actions: defaultQuickActions
         });
     };
 
@@ -165,7 +168,7 @@ function App() {
 
         if (q.includes('nearest') || q.includes('close')) {
             await navigationService.current.getNearbySuggestions();
-            const response = `I can open nearest restroom and mall. Say nearest restroom or nearest mall now.`;
+            const response = `I can open nearest restroom, mall, hospital, or police station. Say nearest restroom, nearest mall, or closest help now.`;
             updateOutput(response);
             updateResultCard({
                 title: 'Nearby options',
@@ -173,7 +176,8 @@ function App() {
                 tone: 'info',
                 actions: [
                     { label: 'Nearest restroom', kind: 'restroom' },
-                    { label: 'Nearest mall', kind: 'mall' }
+                    { label: 'Nearest mall', kind: 'mall' },
+                    { label: 'Closest help', kind: 'help' }
                 ]
             });
             speakMessage(response);
@@ -189,7 +193,7 @@ function App() {
                 body: response,
                 tone: 'warning',
                 actions: [
-                    { label: 'Live location', kind: 'location' },
+                    { label: 'Share live location', kind: 'location' },
                     { label: 'Navigate safely', kind: 'saved-place', value: 'Work' }
                 ]
             });
@@ -209,8 +213,8 @@ function App() {
             body: fallback,
             tone: 'info',
             actions: [
-                { label: 'Live location', kind: 'location' },
-                { label: 'Nearest help', kind: 'help' },
+                { label: 'Share live location', kind: 'location' },
+                { label: 'Looking for nearby help', kind: 'help' },
                 { label: 'Nearest mall', kind: 'mall' }
             ]
         });
@@ -246,7 +250,7 @@ function App() {
                         tone: 'celebrate',
                         actions: [
                             { label: 'What do you see', kind: 'scene' },
-                            { label: 'Live location', kind: 'location' }
+                            { label: 'Share live location', kind: 'location' }
                         ]
                     });
                     speakMessage(`Okay, I will watch for ${params.item}.`);
@@ -352,16 +356,18 @@ function App() {
         const result = await navigationService.current.findNearby(type);
         updateOutput(result.announcement);
         updateResultCard({
-            title: `Nearby ${type}`,
+            title: type === 'help' ? 'Emergency landmarks nearby' : `Nearby ${type}`,
             body: result.announcement,
             tone: 'info',
-            actions: [
-                { label: 'Open in Maps', kind: 'open-maps', value: result.googleMapsUrl },
-                { label: 'Live location', kind: 'location' }
-            ]
+            actions: result.actions?.length
+                ? result.actions
+                : [
+                    { label: 'Open in Maps', kind: 'open-maps', value: result.googleMapsUrl },
+                    { label: 'Live location', kind: 'location' }
+                ]
         });
         speakMessage(result.announcement);
-        openGoogleMaps(result.googleMapsUrl);
+        if (type !== 'help' && result.googleMapsUrl) openGoogleMaps(result.googleMapsUrl);
     };
 
     const stopNavigation = () => {
@@ -371,11 +377,15 @@ function App() {
         setMapsUrl('');
     };
 
-    const speakCurrentLocation = () => {
+    const speakCurrentLocation = async () => {
         const location = navigationService.current.currentPosition;
         if (location) {
+            const readableLocation = await navigationService.current.reverseGeocodeLocation(location);
+            if (readableLocation) setLocationName(readableLocation);
             const accuracy = location.accuracy ? `with about ${Math.round(location.accuracy)} meter accuracy` : '';
-            const locationMessage = `Live location: latitude ${location.lat.toFixed(5)}, longitude ${location.lng.toFixed(5)} ${accuracy}`.trim();
+            const locationMessage = readableLocation
+                ? `Live location: ${readableLocation}. Coordinates ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)} ${accuracy}`.trim()
+                : `Live location: latitude ${location.lat.toFixed(5)}, longitude ${location.lng.toFixed(5)} ${accuracy}`.trim();
             updateOutput(locationMessage);
             setMapsUrl(`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`);
             updateResultCard({
@@ -384,10 +394,14 @@ function App() {
                 tone: 'info',
                 actions: [
                     { label: 'Open in Maps', kind: 'open-maps', value: `https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}` },
-                    { label: 'Nearest help', kind: 'help' }
+                    { label: 'Looking for nearby help', kind: 'help' }
                 ]
             });
-            speakMessage(`You are near latitude ${location.lat.toFixed(4)} and longitude ${location.lng.toFixed(4)}, ${accuracy}.`);
+            speakMessage(
+                readableLocation
+                    ? `You are near ${readableLocation}, ${accuracy}.`
+                    : `You are near latitude ${location.lat.toFixed(4)} and longitude ${location.lng.toFixed(4)}, ${accuracy}.`
+            );
         } else {
             updateOutput('I am still getting your live location.');
             speakMessage('I am still getting your location.');
@@ -487,7 +501,7 @@ function App() {
             body: alertMessage,
             tone: 'danger',
             actions: [
-                { label: 'Live location', kind: 'location' },
+                { label: 'Share live location', kind: 'location' },
                 { label: 'Call mother', kind: 'call', value: 'mother' }
             ]
         });
@@ -626,6 +640,10 @@ function App() {
                     </article>
                     {liveLocation && (
                         <div className="location-grid">
+                            <div className="location-pill">
+                                <span>Readable place</span>
+                                <strong>{locationName || 'Ask for live location'}</strong>
+                            </div>
                             <div className="location-pill">
                                 <span>Latitude</span>
                                 <strong>{liveLocation.lat.toFixed(5)}</strong>

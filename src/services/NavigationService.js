@@ -10,6 +10,8 @@ class NavigationService {
         this.lastInstructionAt = 0;
         this.defaultCity = { lat: 40.7128, lng: -74.006 };
         this.lastTrafficSummary = 'Traffic data is not available yet.';
+        this.lastResolvedLocation = null;
+        this.lastReverseGeocodeAt = 0;
     }
 
     startLocationTracking(callback) {
@@ -65,6 +67,44 @@ class NavigationService {
         const data = await response.json();
         if (!Array.isArray(data) || data.length === 0) return null;
         return { lat: Number(data[0].lat), lng: Number(data[0].lon), label: data[0].display_name };
+    }
+
+    async reverseGeocodeLocation(position = this.currentPosition) {
+        if (!position) return null;
+
+        const cacheKey = `${position.lat.toFixed(4)},${position.lng.toFixed(4)}`;
+        const now = Date.now();
+
+        if (this.lastResolvedLocation?.key === cacheKey && now - this.lastResolvedLocation.at < 30000) {
+            return this.lastResolvedLocation.label;
+        }
+
+        if (now - this.lastReverseGeocodeAt < 1100 && this.lastResolvedLocation?.label) {
+            return this.lastResolvedLocation.label;
+        }
+
+        this.lastReverseGeocodeAt = now;
+
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${position.lat}&lon=${position.lng}&format=json`,
+                {
+                    headers: {
+                        'Accept-Language': 'en'
+                    }
+                }
+            );
+            const data = await response.json();
+            const label = data?.display_name || null;
+
+            if (label) {
+                this.lastResolvedLocation = { key: cacheKey, label, at: Date.now() };
+            }
+
+            return label;
+        } catch {
+            return this.lastResolvedLocation?.label || null;
+        }
     }
 
     async fetchLiveTraffic(origin, destination) {
@@ -139,15 +179,96 @@ class NavigationService {
         return this.route;
     }
 
+    calculateDistance(origin, destination) {
+        const earthRadius = 6371000;
+        const lat1 = origin.lat * Math.PI / 180;
+        const lat2 = destination.lat * Math.PI / 180;
+        const deltaLat = (destination.lat - origin.lat) * Math.PI / 180;
+        const deltaLng = (destination.lng - origin.lng) * Math.PI / 180;
+
+        const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+            + Math.cos(lat1) * Math.cos(lat2)
+            * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return earthRadius * c;
+    }
+
+    formatLandmarkResult(element, origin, fallbackLabel) {
+        const lat = element?.lat;
+        const lng = element?.lon;
+        if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+
+        return {
+            label: element?.tags?.name || fallbackLabel,
+            lat,
+            lng,
+            distance: this.calculateDistance(origin, { lat, lng }),
+            googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+        };
+    }
+
     async findNearby(type) {
         const origin = this.currentPosition || this.defaultCity;
-        const amenityMap = { restroom: 'toilets', mall: 'mall', help: 'hospital' };
-        const amenity = amenityMap[type] || 'toilets';
 
         try {
-            const overpassQuery = `[out:json];(node[amenity=${amenity}](around:1500,${origin.lat},${origin.lng});node[shop=mall](around:3000,${origin.lat},${origin.lng}););out 10;`;
+            let overpassQuery = '';
+
+            if (type === 'restroom') {
+                overpassQuery = `[out:json];node[amenity=toilets](around:1500,${origin.lat},${origin.lng});out 10;`;
+            } else if (type === 'mall') {
+                overpassQuery = `[out:json];node[shop=mall](around:3000,${origin.lat},${origin.lng});out 10;`;
+            } else if (type === 'help') {
+                overpassQuery = `[out:json];(node[amenity=hospital](around:5000,${origin.lat},${origin.lng});node[amenity=police](around:5000,${origin.lat},${origin.lng}););out 20;`;
+            } else {
+                overpassQuery = `[out:json];node[amenity=toilets](around:1500,${origin.lat},${origin.lng});out 10;`;
+            }
+
             const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`);
             const data = await response.json();
+
+            if (type === 'help') {
+                const elements = Array.isArray(data?.elements) ? data.elements : [];
+                const hospital = elements
+                    .filter((element) => element?.tags?.amenity === 'hospital')
+                    .map((element) => this.formatLandmarkResult(element, origin, 'nearest hospital'))
+                    .filter(Boolean)
+                    .sort((a, b) => a.distance - b.distance)[0];
+
+                const police = elements
+                    .filter((element) => element?.tags?.amenity === 'police')
+                    .map((element) => this.formatLandmarkResult(element, origin, 'nearest police station'))
+                    .filter(Boolean)
+                    .sort((a, b) => a.distance - b.distance)[0];
+
+                const options = [];
+                if (hospital) {
+                    options.push({ label: 'Nearest hospital', kind: 'open-maps', value: hospital.googleMapsUrl });
+                }
+                if (police) {
+                    options.push({ label: 'Nearest police', kind: 'open-maps', value: police.googleMapsUrl });
+                }
+
+                if (options.length > 0) {
+                    const nearestEmergencySpot = [hospital, police].filter(Boolean).sort((a, b) => a.distance - b.distance)[0];
+                    const announcementParts = [];
+
+                    if (hospital) {
+                        announcementParts.push(`Nearest hospital is ${hospital.label}, about ${Math.round(hospital.distance)} meters away`);
+                    }
+                    if (police) {
+                        announcementParts.push(`nearest police station is ${police.label}, about ${Math.round(police.distance)} meters away`);
+                    }
+
+                    return {
+                        type,
+                        announcement: `I found nearby emergency landmarks. ${announcementParts.join('. ')}.`,
+                        googleMapsUrl: nearestEmergencySpot.googleMapsUrl,
+                        actions: options
+                    };
+                }
+            }
+
             const first = data?.elements?.[0];
             const label = first?.tags?.name || `nearby ${type}`;
             const lat = first?.lat || origin.lat;
