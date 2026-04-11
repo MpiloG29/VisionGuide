@@ -2,24 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <!-- Viewport — prevent zoom, respect safe areas -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
+  <!-- PWA / Mobile app meta -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#030810" />
-  <meta
-    name="description"
-    content="VisionGuide: voice-guided navigation with camera awareness, emergency support, and safer route assistance."
-  />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VisionGuide" />
+  <meta name="application-name" content="VisionGuide" />
+  <meta name="msapplication-TileColor" content="#070d1a" />
+  <meta name="theme-color" content="#070d1a" />
+  <meta name="color-scheme" content="dark" />
+
+  <!-- SEO & description -->
+  <meta name="description" content="VisionGuide: AI-powered voice navigation, real-time obstacle detection, and emergency SOS for visually impaired users." />
+  <meta name="keywords" content="accessibility, visually impaired, navigation, voice assistant, obstacle detection, AI" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="VisionGuide — AI Navigation" />
+  <meta property="og:description" content="Voice-guided navigation with AI obstacle detection and emergency support." />
+  <meta property="og:type" content="website" />
+
   <title>VisionGuide</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Apple touch icons -->
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.svg" />
+
+  <!-- Standard icon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- iOS splash screen background -->
+  <style>
+    html, body { margin: 0; padding: 0; background: #070d1a; }
+  </style>
 </head>
 <body>
-  <noscript>You need to enable JavaScript to run VisionGuide.</noscript>
+  <noscript>
+    <div style="font-family:sans-serif;padding:2rem;background:#070d1a;color:#e8eeff;text-align:center;">
+      VisionGuide requires JavaScript. Please enable it in your browser settings.
+    </div>
+  </noscript>
   <div id="root"></div>
 </body>
 </html>

@@ -43,3 +43,11 @@ if (document.readyState === 'loading') {
 } else {
     mountApp();
 }
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Offline support is optional, so registration failures are non-fatal.
+        });
+    });
+}

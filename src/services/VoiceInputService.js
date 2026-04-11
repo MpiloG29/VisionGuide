@@ -1,129 +1,169 @@
+/**
+ * VisionGuide VoiceInputService
+ * Uses the real browser Web Speech API for recognition and synthesis.
+ * Language is fully configurable at runtime — no hardcoded locale.
+ */
 class VoiceInputService {
     constructor() {
-        this.recognition = null;
-        this.isListening = false;
-        this.onCommandCallback = null;
+        this.recognition          = null;
+        this.isListening          = false;
+        this.onCommandCallback    = null;
         this.onTranscriptCallback = null;
-        this.shouldContinue = false;
+        this.shouldContinue       = false;
+        this.lang                 = 'en-ZA';    // default; overridden by setLanguage()
+
+        // Command trigger phrases — keyed by command type.
+        // Keep the most specific phrases first so shorter phrases don't shadow them.
         this.commands = {
-            navigate: ['navigate to', 'go to', 'take me to', 'set destination', 'i am going to', 'heading to'],
-            find: ['find', 'help me find', 'look for', 'where is', 'locate'],
-            nearbyRestroom: ['nearest restroom', 'nearby restroom', 'find restroom', 'toilet near me', 'nearest bathroom'],
-            nearbyMall: ['nearest mall', 'nearby mall', 'shopping mall near me'],
-            nearbyHelp: ['nearest hospital', 'nearest police', 'closest help', 'safe place near me'],
-            emergency: ['emergency', 'help me now', 'danger', 'panic mode'],
-            call: ['call my', 'call'],
-            assistant: ['assistant', 'ask assistant', 'help me with'],
-            see: ['what do you see', 'what is around me', 'describe my surroundings', 'tell me what you see', 'what is the traffic robot color'],
-            stop: ['stop', 'cancel', 'end navigation', 'stop navigation'],
-            where: ['where am i', 'my location', 'current location', 'live location', 'show live location', 'show my location'],
-            status: ['status', 'how far', 'remaining distance', 'eta'],
-            repeat: ['repeat', 'say again', 'repeat instruction'],
-            help: ['help', 'commands', 'what can i say']
+            navigate:       ['navigate to', 'go to', 'take me to', 'set destination to', 'directions to', 'i am going to', 'heading to', 'route to'],
+            find:           ['help me find', 'look for', 'locate my', 'locate', 'find my', 'where is my', 'where is', 'find'],
+            nearbyRestroom: ['nearest restroom', 'nearby restroom', 'find restroom', 'toilet near me', 'nearest bathroom', 'nearest toilet'],
+            nearbyMall:     ['nearest mall', 'nearby mall', 'shopping mall near me', 'find mall'],
+            nearbyHospital: ['nearest hospital', 'nearest clinic', 'find hospital'],
+            nearbyPharmacy: ['nearest pharmacy', 'find pharmacy', 'nearest chemist'],
+            nearbyPolice:   ['nearest police', 'police station near me'],
+            nearbyFood:     ['nearest restaurant', 'find food', 'nearest cafe', 'nearest fast food'],
+            nearbyBank:     ['nearest atm', 'nearest bank', 'find atm'],
+            nearbyTransport:['nearest bus stop', 'nearest station', 'find taxi', 'nearest bus'],
+            nearbyHelp:     ['closest help', 'safe place near me', 'nearest help'],
+            emergency:      ['emergency', 'help me now', 'danger', 'panic', 'sos'],
+            call:           ['call my', 'call'],
+            assistant:      ['assistant', 'ask assistant', 'hey assistant'],
+            weather:        ['what is the weather', 'weather today', 'is it raining', 'will it rain', 'current weather'],
+            airquality:     ['air quality', 'air pollution', 'is the air safe'],
+            see:            ['what do you see', 'what is around me', 'describe my surroundings', 'tell me what you see', 'scan surroundings', 'what is the traffic robot color', 'traffic light color'],
+            stop:           ['stop navigation', 'cancel navigation', 'end navigation', 'stop', 'cancel'],
+            where:          ['where am i', 'my location', 'current location', 'live location', 'what street am i on', 'what area am i in'],
+            status:         ['navigation status', 'how far', 'remaining distance', 'eta', 'status'],
+            repeat:         ['repeat that', 'say again', 'repeat instruction', 'repeat'],
+            help:           ['list commands', 'what can i say', 'help me', 'help'],
         };
     }
 
-    init() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            console.warn('Speech recognition not supported');
+    // ── Initialise Web Speech API ──────────────────────────
+    init(lang) {
+        if (lang) this.lang = lang;
+
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            console.warn('VisionGuide: Speech recognition not available in this browser.');
             return false;
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.recognition = new SpeechRecognition();
-        this.recognition.lang = 'en-US';
-        this.recognition.continuous = true;
+        this.recognition                = new SR();
+        this.recognition.lang           = this.lang;
+        this.recognition.continuous     = true;
         this.recognition.interimResults = true;
+        this.recognition.maxAlternatives = 2;
 
         this.recognition.onstart = () => { this.isListening = true; };
+
         this.recognition.onend = () => {
             this.isListening = false;
-            if (this.shouldContinue) setTimeout(() => this.startListening(), 120);
+            if (this.shouldContinue) setTimeout(() => this._safeStart(), 200);
+        };
+
+        this.recognition.onerror = (e) => {
+            // 'aborted' and 'no-speech' are harmless — restart silently
+            if (e.error === 'aborted' || e.error === 'no-speech') return;
+            console.warn('VisionGuide speech error:', e.error);
         };
 
         this.recognition.onresult = (event) => {
-            let finalTranscript = '';
+            let finalText = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) finalText += event.results[i][0].transcript + ' ';
             }
-            if (finalTranscript) {
-                this.processCommand(finalTranscript);
-                if (this.onTranscriptCallback) this.onTranscriptCallback(finalTranscript);
-            }
+            finalText = finalText.trim();
+            if (!finalText) return;
+
+            if (this.onTranscriptCallback) this.onTranscriptCallback(finalText);
+            this._processCommand(finalText);
         };
 
         return true;
     }
 
+    // ── Language switch at runtime ──────────────────────────
+    setLanguage(langCode) {
+        this.lang = langCode;
+        if (this.recognition) {
+            const wasListening = this.isListening;
+            if (wasListening) this.stopListening();
+            this.recognition.lang = langCode;
+            if (wasListening) this.startListening();
+        }
+    }
+
+    // ── Start / stop ────────────────────────────────────────
     startListening() {
         if (!this.recognition && !this.init()) return false;
-        try {
-            this.shouldContinue = true;
-            this.recognition.start();
-            return true;
-        } catch {
-            return false;
-        }
+        this.shouldContinue = true;
+        return this._safeStart();
     }
 
     stopListening() {
         this.shouldContinue = false;
-        if (this.recognition && this.isListening) this.recognition.stop();
+        if (this.recognition && this.isListening) {
+            try { this.recognition.stop(); } catch { /* already stopped */ }
+        }
     }
 
-    processCommand(transcript) {
-        const lowerTranscript = transcript.toLowerCase().trim();
+    _safeStart() {
+        try { this.recognition.start(); return true; } catch { return false; }
+    }
+
+    // ── Command parsing ─────────────────────────────────────
+    _processCommand(transcript) {
+        const lower = transcript.toLowerCase().trim();
         let commandType = null;
-        let params = null;
+        let params      = {};
 
         for (const [cmd, phrases] of Object.entries(this.commands)) {
-            const phrase = phrases.find((entry) => lowerTranscript.includes(entry));
-            if (!phrase) continue;
+            const matched = phrases.find(p => lower.includes(p));
+            if (!matched) continue;
 
             commandType = cmd;
-            if (cmd === 'navigate') {
-                const destinationMatch = lowerTranscript.split(phrase).pop().trim();
-                if (destinationMatch) params = { destination: destinationMatch };
-            }
-            if (cmd === 'find') {
-                const itemMatch = lowerTranscript.split(phrase).pop().trim();
-                if (itemMatch) params = { item: itemMatch.replace(/^my\s+/, '') };
-            }
-            if (cmd === 'call') {
-                const contactMatch = lowerTranscript.split(phrase).pop().trim();
-                if (contactMatch) params = { contact: contactMatch.replace(/^my\s+/, '') };
-            }
-            if (cmd === 'assistant') {
-                const question = lowerTranscript.split(phrase).pop().trim();
-                params = { question: question || lowerTranscript };
-            }
+            const after = lower.slice(lower.indexOf(matched) + matched.length).trim();
+
+            if (cmd === 'navigate' && after) params.destination = this._cleanParam(after);
+            if (cmd === 'find'     && after) params.item        = this._cleanParam(after.replace(/^my\s+/, ''));
+            if (cmd === 'call'     && after) params.contact     = this._cleanParam(after.replace(/^my\s+/, ''));
+            if (cmd === 'assistant' && after) params.question   = after;
             break;
         }
 
-        if (commandType && this.onCommandCallback) this.onCommandCallback(commandType, params);
+        if (commandType && this.onCommandCallback) {
+            this.onCommandCallback(commandType, params);
+        }
         return commandType;
     }
 
-    onCommand(callback) { this.onCommandCallback = callback; }
-    onTranscript(callback) { this.onTranscriptCallback = callback; }
+    _cleanParam(text) {
+        // Strip trailing filler words that may appear at end of voice transcripts
+        return text.replace(/\b(please|now|quickly|okay|ok)\s*$/i, '').trim();
+    }
+
+    // ── Callbacks ───────────────────────────────────────────
+    onCommand(cb)    { this.onCommandCallback    = cb; }
+    onTranscript(cb) { this.onTranscriptCallback = cb; }
 
     getCommandsList() {
         return {
-            navigate: 'Say "navigate to [destination]" to start live walking guidance.',
-            find: 'Say "find [item]" to track objects like phone, laptop, or keys in camera view.',
-            nearbyRestroom: 'Say "nearest restroom" to open nearby restrooms.',
-            nearbyMall: 'Say "nearest mall" to open nearby malls.',
-            nearbyHelp: 'Say "nearest hospital" or "closest help" for emergency places.',
-            emergency: 'Say "emergency" or tap emergency button to alert and call contact.',
-            call: 'Say "call my mother" or "call father".',
-            assistant: 'Say "assistant [question]" to ask for guidance by voice.',
-            trafficRobot: 'Ask "what is the traffic robot color" to hear red/green updates when visible.',
-            see: 'Say "what do you see" to hear a live scene summary.',
-            stop: 'Say "stop navigation" to end guidance.',
-            where: 'Say "where am I" to hear your current location.',
-            status: 'Say "status" to hear remaining distance and time.',
-            repeat: 'Say "repeat" to hear the last instruction again.',
-            help: 'Say "help" to hear available commands.'
+            navigate:    '"navigate to [place]" — start walking directions',
+            find:        '"find [object]" — track item in camera',
+            nearby:      '"nearest restroom / hospital / mall / pharmacy / police / bus stop"',
+            weather:     '"what is the weather" — live weather & alerts',
+            airquality:  '"air quality" — current air pollution level',
+            see:         '"what do you see" — AI scene description',
+            location:    '"where am I" — your current address',
+            emergency:   '"emergency" or "SOS" — alert contacts',
+            call:        '"call my [name]" — phone emergency contact',
+            assistant:   '"assistant [question]" — ask anything',
+            stop:        '"stop navigation"',
+            status:      '"status" — remaining distance & time',
+            repeat:      '"repeat" — hear last instruction again',
+            help:        '"help" — list all commands',
         };
     }
 }
