@@ -1,6 +1,7 @@
 {
   "name": "vision-guide",
   "version": "1.0.0",
+  "homepage": "https://MpiloG29.github.io/VisionGuide",
   "description": "Voice-guided navigation for visually impaired with AI obstacle detection",
   "private": true,
   "dependencies": {
@@ -19,16 +20,21 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.16",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6"
   },
-  
   "eslintConfig": {
-    "extends": ["react-app", "react-app/jest"]
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
   },
   "browserslist": {
     "production": [
