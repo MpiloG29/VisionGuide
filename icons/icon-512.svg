@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c1428"/>
+      <stop offset="100%" stop-color="#070d1a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5b8fff"/>
+      <stop offset="100%" stop-color="#00e0c0"/>
+    </linearGradient>
+    <linearGradient id="iris" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00e0c0"/>
+      <stop offset="100%" stop-color="#5b8fff"/>
+    </linearGradient>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Outer glow halo -->
+  <ellipse cx="256" cy="256" rx="190" ry="108" fill="none" stroke="url(#glow)" stroke-width="2" opacity="0.2" filter="url(#blur)"/>
+
+  <!-- Eye shape -->
+  <path d="M40 256 Q256 76 472 256 Q256 436 40 256Z" fill="none" stroke="url(#glow)" stroke-width="12" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- Iris outer ring -->
+  <circle cx="256" cy="256" r="92" fill="none" stroke="url(#iris)" stroke-width="8" opacity="0.9"/>
+
+  <!-- Iris inner -->
+  <circle cx="256" cy="256" r="70" fill="rgba(0,224,192,0.07)"/>
+
+  <!-- Pupil fill -->
+  <circle cx="256" cy="256" r="50" fill="url(#glow)"/>
+
+  <!-- Pupil dark center -->
+  <circle cx="256" cy="256" r="20" fill="#070d1a"/>
+
+  <!-- Highlight reflections -->
+  <circle cx="282" cy="232" r="10" fill="white" opacity="0.55"/>
+  <circle cx="244" cy="270" r="5"  fill="white" opacity="0.25"/>
+
+  <!-- Scan line decorations -->
+  <line x1="100" y1="256" x2="150" y2="256" stroke="url(#glow)" stroke-width="2" opacity="0.4"/>
+  <line x1="362" y1="256" x2="412" y2="256" stroke="url(#glow)" stroke-width="2" opacity="0.4"/>
+
+  <!-- App name -->
+  <text x="256" y="440" font-family="system-ui, sans-serif" font-size="36" font-weight="800" fill="url(#glow)" text-anchor="middle" letter-spacing="6">VISIONGUIDE</text>
+  <text x="256" y="475" font-family="system-ui, sans-serif" font-size="18" font-weight="400" fill="#7b8aac" text-anchor="middle" letter-spacing="3">AI NAVIGATION</text>
+</svg>

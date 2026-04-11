@@ -1,0 +1,11 @@
+{
+  "files": {
+    "main.css": "/VisionGuide/static/css/main.6c22bcf5.css",
+    "main.js": "/VisionGuide/static/js/main.d0291e7a.js",
+    "index.html": "/VisionGuide/index.html"
+  },
+  "entrypoints": [
+    "static/css/main.6c22bcf5.css",
+    "static/js/main.d0291e7a.js"
+  ]
+}
